@@ -1,0 +1,86 @@
+var express = require('express'),
+    multer  = require('multer');
+var path 	= require('path');
+var logger  = require('morgan');
+var mongoose = require('mongoose');
+var EventModel = require('./models/eventSchema');
+var multer  = require('multer');
+var cookieParser = require('cookie-parser');
+var bodyParser = require('body-parser');
+var app = express();
+
+var upload = multer({dest:'./uploads/'});
+
+mongoose.connect('mongodb://manu:manuk@ds033163.mongolab.com:33163/potholedetect', { server: { poolSize: 5 } });
+
+// uncomment after placing your favicon in /public
+// app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+app.use(logger('dev'));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
+
+
+
+function getMSG(counter, fail, result, msg) {
+    var STAT = null;
+    if(fail == 0) STAT = 'SUCCESS';
+    else if(fail == counter.length) STAT = 'ERROR';
+    else STAT = 'WARNING';
+    var MSG = {
+        "Status" : STAT,
+        "Pass Count" : counter.length - fail,
+        "Fail Count" : fail,
+        "Message" : (counter.length - fail) + " test case(s) have been " + msg + "."
+    };
+    if(result.length > 0)
+        MSG["Details"] = result;
+    return MSG;
+}
+
+app.use(function(req, res, next) {
+  var err = new Error('Not Found');
+  err.status = 404;
+  next(err);
+});
+
+if (app.get('env') === 'development') {
+  app.use(function(err, req, res, next) {
+    res.status(err.status || 500);
+    next(err);
+  });
+}
+
+// production error handler
+// no stacktraces leaked to user
+app.use(function(err, req, res, next) {
+  res.status(err.status || 500);
+  next(err);
+});
+
+
+//=============================================
+
+app.get('/', function(req, res){
+    EventModel.find({}, function(err, events) {
+        if(err) {
+            console.log(err);
+            res.status(400).json(err);
+        }
+        else {
+            res.status(200).json(events);
+        }
+    });
+});
+
+app.post('/',[ multer({ dest: './uploads/'}), function(req, res){
+    console.log(req.body); // form fields
+    console.log(req.files); // form files
+    res.status(204).end();
+}]);
+
+
+//=============================================
+app.listen(3000, function() {
+    console.log("Working on port 3000");
+});
